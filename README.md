@@ -1,16 +1,17 @@
-# CubicPrimalityTest
+# SimplePrimalityTest
 
 WORK IN PROGRESS !!!
 
 This is test code to verify a simple primality test, based on linear recurrences 
 
-The official paper describing the test and its proofs is work-in-progress
-
-So far, no counterexample (pseudo prime) has been found. 
+So far, no counterexample (pseudoprime) has been found. 
 
 # The maths
 
 This is BPSW test
+
+- eliminate composite numbers which are not 2-SPRPs
+- eliminate composite numbers which are not Lucas(D, 1,1) PRPs with D=5,-7,9,-11 .... not a quadratic residue
 
 # Simple utility based of GMP library for large integers
 
@@ -32,11 +33,16 @@ $ ./simple 2^11213-1
 
 ```
 
-So far, no counterexample (pseudo prime) has been found. Exhaustive tests completed to 10^15
-
 # Complete user's guide :
 
 Later.
+
+# Limits
+
+GMP and memory limits apply.
+
+
+
 
 
 
