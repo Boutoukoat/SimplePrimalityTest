@@ -13,6 +13,14 @@ This is BPSW test
 - eliminate composite numbers which are not 2-SPRPs
 - eliminate composite numbers which are not Lucas(D, 1,1) PRPs with D=5,-7,9,-11 .... not a quadratic residue
 
+# See also
+
+See the following self-similar primality tests
+
+- SimplePrimalityTest
+- QuadraticPrimalityTest
+- CubicPrimalityTest
+
 # Simple utility based of GMP library for large integers
 
 ```
