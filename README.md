@@ -2,26 +2,27 @@
 
 WORK IN PROGRESS !!!
 
-This is test code to verify a simple primality test, based on linear recurrences 
+This is test code to verify a simple primality test, based on linear recurrences
 
 So far, no counterexample (pseudoprime) has been found. 
 
 # The maths
 
-This is BPSW test
+This is quite close tp BPSW test
 
 - eliminate composite numbers which are not 2-SPRPs
-- eliminate composite numbers which are not Lucas(D, 1,1) PRPs with D=5,-7,9,-11 .... not a quadratic residue
+- eliminate composite numbers which are not Lucas(D, 1,1) PRPs with D=5,-7,9,-11 ... , and not a quadratic residue
+- takes advantage of some special forms of moduli
 
 # See also
 
-See the following self-similar primality tests
+See the following self-similar primality tests in the same repository
 
 - SimplePrimalityTest
 - QuadraticPrimalityTest
 - CubicPrimalityTest
 
-# Simple utility based of GMP library for large integers
+# Simple utility based on GMP library for large integers
 
 ```
 $ make
@@ -38,6 +39,15 @@ $ ./simple 0x988a04da39838a3757afef4ae6ed84b092aa0ee673067e52140862e5d27af3adfd1
 
 $ ./simple 2^11213-1
 2^11213-1 might be prime, time=    3147.283 msecs.
+
+$ cat test.txt
+3^2+1
+3^2+2
+$ ./simple -v -f test.txt
+3^2+1 ... composite for sure
+3^2+2 ... might be prime
+File test.txt done, 1 primes, 1 composites
+
 
 ```
 
