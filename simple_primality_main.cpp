@@ -32,12 +32,12 @@ static void simple_primality_file(char *name, bool verbose)
         mpz_init(v);
 
         // get a line
-        buff[buff_len - 1] = 0;
+        buff[buff_len - 2] = 0;
         while (fgets(buff, buff_len, f))
         {
 		// check overflow
 		line++;
-		if (buff[buff_len - 1] != 0)
+		if (buff[buff_len - 2] != 0)
 		{
 			printf("Input line %ld too long\n", line);
 			exit(1);
