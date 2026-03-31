@@ -713,7 +713,7 @@ static sieve_t mpz_composite_sieve(mpz_t n)
         // step 1 :
         //   reduce by a multiple of small factors
         // step 2:
-        //    divisibility is based on Barrett modular reductions by constants, use modular multiplications
+        //    divisibility is based on Barrett modular reductions by constants
 
         uint64_t a;
 
@@ -869,7 +869,6 @@ static bool mpz_lucas(mod_precompute_t *p, bool verbose = false)
     // process the sequence 5, -7, 9, -11, 13, -15 .....
     while (1)
     {
-        mpz_init(ignore);
         nn = mpz_mod_ui(ignore, p->m, 4 * d);
         j = uint64_jacobi(d, nn);
         if (j == 0)
@@ -1080,6 +1079,13 @@ bool mpz_simple_primality(mpz_t n, bool verbose)
         }
         return false; // composite
     }
+    else
+    {
+        if (verbose)
+        {
+            printf("Number is a 2-SPRP\n");
+        }
+    }
 
     b = mpz_is_perfect_square(n);
     if (b == true)
@@ -1101,6 +1107,7 @@ bool mpz_simple_primality(mpz_t n, bool verbose)
     }
     if (verbose && r == true)
     {
+        printf("Number is a Lucas-PRP\n");
         printf("Number passed all tests and is unlikely a composite one\n");
     }
 

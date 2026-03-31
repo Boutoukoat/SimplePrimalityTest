@@ -15,7 +15,9 @@ struct mod_precompute_t
     mpz_t a;           // Barrett coefficient 2^n32 mod m
     mpz_t b;           // Barrett coefficient 2^n32 div m
     mpz_t m;           // modulus
-    mpz_t i;           // another integer
+    mpz_t inv;         // precomputed modular inverse
+    mpz_t x_lo;        // used to slice the input number into 2 parts
+    mpz_t x_hi;        // used to slice the input number into 2 parts
     uint64_t n;        // log2(modulus)
     uint64_t n2;       // Reduction threshold (n / 2) rounded down
     uint64_t n32;      // Barrett threshold (n * 3)/2, exactly n32 = n + n2
