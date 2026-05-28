@@ -18,7 +18,10 @@ simple_primality_main.o: simple_primality_main.cpp simple_primality.h simple_pri
 simple_primality_alloc.o: simple_primality_alloc.cpp simple_primality_alloc.h
 	$(GGG) -c -o simple_primality_alloc.o simple_primality_alloc.cpp
 
-simple_primality.o: simple_primality.cpp simple_primality.h
+simple_primality_precompute.o: simple_primality_precompute.cpp simple_primality_precompute.h
+	$(GGG) -c -o simple_primality_precompute.o simple_primality_precompute.cpp
+
+simple_primality.o: simple_primality.cpp simple_primality.h simple_primality_precompute.h
 	$(GGG) -c -o simple_primality.o simple_primality.cpp
 
 expression_parser.a : bison.gmp_expr.o lex.gmp_expr.o bison.gmp_expr.tab.h
