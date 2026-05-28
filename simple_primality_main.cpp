@@ -62,7 +62,12 @@ static void simple_primality_file(char *name, bool verbose)
                     printf("%s ...", pt);
                     fflush(stdout);
                 }
-                mpz_expression_parse(v, pt);
+                bool valid = mpz_expression_parse(v, pt);
+		if (!valid)
+		{
+			printf("Input line %ld unparsable\n", line);
+			exit(1);
+		}
                 bool is_prime = mpz_simple_primality(v);
                 if (verbose)
                 {
@@ -124,14 +129,19 @@ int main(int argc, char **argv)
         }
         else
         {
-            // command line argument must be a number, or an expression
+            // command line argument must be a number "123" , or an expression  "3+5"
             struct timespec ts1, ts2;
             mpz_t n;
             mpz_init(n);
 
             // Read an expression from the command line
             // Supported operators are +/-*^() with usual precedence.
-            mpz_expression_parse(n, argv[i]);
+            bool valid = mpz_expression_parse(n, argv[i]);
+	    if (!valid)
+	    {
+			printf("Input unparsable\n");
+			exit(1);
+	    }
             // gmp_printf("Test n=%Zd.\n",n);
 
             clock_gettime(CLOCK_REALTIME, &ts1);

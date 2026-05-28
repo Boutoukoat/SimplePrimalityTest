@@ -953,6 +953,15 @@ static bool uint64_simple_primality(uint64_t n, bool verbose = false)
         return r;
     }
 
+    if (n < 2)
+    {
+        if (verbose)
+        {
+            printf("Number is < 2, not prime\n");
+        }
+	return false;
+    }
+
     if ((n & 1) == 0)
     {
         if (verbose)
@@ -1157,11 +1166,12 @@ void simple_primality_self_test(void)
     }
 
     // ---------------------------------------------------------------------------------
-    printf("Sieve ...\n");
+    printf("Sieve (uint64)\n");
     assert(uint64_composite_sieve(101) == PRIME_FOR_SURE);
     assert(uint64_composite_sieve(1661) == COMPOSITE_FOR_SURE);
     assert(uint64_composite_sieve(281474976710677ull) == UNDECIDED);
 
+    printf("Sieve (mpz)\n");
     // 2^127 - 1 (a prime)
     mpz_init_set_ui(ma, 1);
     mpz_mul_2exp(ma, ma, 127);
@@ -1365,6 +1375,13 @@ void simple_primality_self_test(void)
     mpz_set_ui(ma, 333);
     mpz_mul_2exp(ma, ma, 448);
     mpz_add_ui(ma, ma, 1);
+    assert(mpz_simple_primality(ma) == true);
+
+    // Large Riesel prime 100000000000037*2^5982-1
+    mpz_set_ui(ma, 1);
+    mpz_mul_2exp(ma, ma , 5982);
+    mpz_mul_ui(ma, ma , 100000000000037ul);
+    mpz_sub_ui(ma, ma, 1ul);
     assert(mpz_simple_primality(ma) == true);
 
     // 11111...6442446...11111 (1001-digits) The smallest zeroless titanic palindromic prime
