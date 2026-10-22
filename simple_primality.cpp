@@ -1106,7 +1106,7 @@ bool mpz_simple_primality(mpz_t n, bool verbose)
         return false; // composite
     }
 
-    mod_precompute_t *pcpt = mpz_mod_precompute(n, verbose);
+    mod_precompute_t *pcpt = mpz_mod_precompute(n, 1, verbose);
     bool r = mpz_lucas(pcpt, verbose);
     mpz_mod_uncompute(pcpt);
 
