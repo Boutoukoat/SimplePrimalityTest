@@ -1210,21 +1210,14 @@ static bool mpz_strong_lucas(mod_precompute_t *p, bool verbose = false)
         printf("Test lucas sequence with D=%s%lu\n", sgn < 0 ? "-" : "+", d);
     }
 
-    mpz_t e, e3, tmp, Utmp, U, V, i2Q;
-    mpz_inits(e, e3, tmp, Utmp, U, V, i2Q, 0);
+    mpz_t e, e3, tmp, Utmp, U, V;
+    mpz_inits(e, e3, tmp, Utmp, U, V, 0);
     d *= sgn;
     q = (1 - d) / 4;
-    if (q < 0)
+    mpz_gcd_ui(tmp, p->m, (q < 0 ? -q : q));
+    if (mpz_cmp_ui(tmp, 1) != 0)
     {
-        mpz_sub_ui(tmp, p->m, -2 * q);
-    }
-    else
-    {
-        mpz_set_si(tmp, 2 * q);
-    }
-    if (mpz_invert(i2Q, tmp, p->m) == 0)
-    {
-        // no inverse, modulus must be composite
+        // modulus must be composite
         goto done;
     }
     mpz_set_ui(U, 1);
