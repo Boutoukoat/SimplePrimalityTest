@@ -458,108 +458,402 @@ static bool mpz_is_perfect_square(mpz_t n)
     return e ? true : false;
 }
 
-static int uint64_jacobi(uint64_t x, uint64_t y)
+// assume a >= 0
+// assume odd b > 0
+// assume a < 2^62 or b < 2^62
+static int uint64_jacobi(uint64_t a, uint64_t b)
 {
-    // assert((y & 1) == 1);
-    if (y == 1 || x == 1)
+    static char cols[]
+                    [64] = {
+                        {1},                                                                               // a=0
+                        {1, 1},                                                                            // a=1
+                        {(char)-1, (char)-1},                                                              // a=2
+                        {0, (char)-1, (char)-1},                                                           // a=3
+                        {1, 1, 1, 1},                                                                      // a=4
+                        {(char)-1, 0, (char)-1, 1, 1},                                                     // a=5
+                        {0, 1, (char)-1, 0, (char)-1, (char)-1},                                           // a=6
+                        {1, (char)-1, 0, 1, (char)-1, (char)-1, (char)-1},                                 // a=7
+                        {(char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1},                              // a=8
+                        {0, 1, 1, 0, 1, 1, 0, 1, 1},                                                       // a=9
+                        {1, 0, (char)-1, 1, (char)-1, 1, 0, (char)-1, (char)-1, (char)-1},                 // a=10
+                        {(char)-1, 1, 1, 1, 0, (char)-1, (char)-1, (char)-1, 1, (char)-1, (char)-1},       // a=11
+                        {0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1},                  // a=12
+                        {1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1}, // a=13
+                        {(char)-1, 1, 0, 1, 1, 1, (char)-1, (char)-1, (char)-1,
+                         0, (char)-1, 1, (char)-1, (char)-1},                                             // a=14
+                        {0, 0, 1, 0, 1, (char)-1, 0, 1, (char)-1, 0, (char)-1, 0, 0, (char)-1, (char)-1}, // a=15
+                        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},                                 // a=16
+                        {(char)-1, (char)-1, (char)-1, 1, (char)-1, 1, 1, 0, 1, 1, (char)-1, 1, (char)-1, (char)-1,
+                         (char)-1, 1, 1}, // a=17
+                        {0, (char)-1, 1, 0, (char)-1, (char)-1,
+                         0, 1, (char)-1, 0, 1, 1, 0, (char)-1, 1, 0, (char)-1, (char)-1}, // a=18
+                        {1, 1, (char)-1, 1, (char)-1, (char)-1, 1, 1, 0, (char)-1, (char)-1,
+                         1, 1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1}, // a=19
+                        {(char)-1, 0, (char)-1, 1, 1, (char)-1, 0, (char)-1, 1, 1,
+                         (char)-1, 0, (char)-1, 1, 1, (char)-1, 0, (char)-1, 1, 1}, // a=20
+                        {0, 1, 0,        0,        (char)-1, (char)-1, 0, 1, (char)-1, 0, (char)-1,
+                         1, 0, (char)-1, (char)-1, 0,        0,        1, 0, 1,        1}, // a=21
+                        {1, (char)-1, 1, 1,        0,        1, (char)-1, (char)-1, (char)-1, 1, (char)-1, 1, 1,
+                         1, (char)-1, 0, (char)-1, (char)-1, 1, (char)-1, (char)-1, (char)-1}, // a=22
+                        {(char)-1, (char)-1, 1,        1, 1,        1,        1,        (char)-1,
+                         1,        (char)-1, 0,        1, (char)-1, 1,        (char)-1, (char)-1,
+                         (char)-1, (char)-1, (char)-1, 1, 1,        (char)-1, (char)-1}, // a=23
+                        {0, 1, (char)-1, 0, (char)-1, (char)-1, 0, (char)-1, 1, 0, 1, 1,
+                         0, 1, (char)-1, 0, (char)-1, (char)-1, 0, (char)-1, 1, 0, 1, 1},            // a=24
+                        {1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1}, // a=25
+                        {(char)-1, 1,        (char)-1, 1,        1,        0,        (char)-1, 1,        1,
+                         1,        1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1,
+                         0,        (char)-1, (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1}, // a=26
+                        {0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1,
+                         0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1}, // a=27
+                        {1, (char)-1, 0, 1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 0, (char)-1, 1, 1, 1,
+                         1, (char)-1, 0, 1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 0, (char)-1, 1, 1, 1}, // a=28
+                        {(char)-1, 1, 1,        1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1,
+                         1,        1, (char)-1, 0, (char)-1, 1, 1,        (char)-1, (char)-1, (char)-1,
+                         (char)-1, 1, (char)-1, 1, 1,        1, (char)-1, 1,        1}, // a=29
+                        {0, 0, 1, 0, (char)-1, 1,        0, 1,        1, 0, (char)-1, 0, 0, 1,        (char)-1,
+                         0, 0, 1, 0, (char)-1, (char)-1, 0, (char)-1, 1, 0, (char)-1, 0, 0, (char)-1, (char)-1}, // a=30
+                        {1,        1, (char)-1, 1,        1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,
+                         1,        1, (char)-1, 0,        1, (char)-1, (char)-1, (char)-1, 1,        1,        1,
+                         (char)-1, 1, (char)-1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1}, // a=31
+                        {(char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1,
+                         (char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1,
+                         (char)-1, (char)-1, 1, 1, (char)-1, (char)-1, 1, 1}, // a=32
+                        {0, (char)-1, (char)-1, 0, 0,        (char)-1, 0, 1, (char)-1, 0, (char)-1, 1,
+                         0, 1,        1,        0, 1,        1,        0, 1, (char)-1, 0, (char)-1, 1,
+                         0, (char)-1, 0,        0, (char)-1, (char)-1, 0, 1, 1}, // a=33
+                        {1,        1,        (char)-1, 1,        1,        (char)-1, 1,       0,        (char)-1,
+                         (char)-1, (char)-1, 1,        1,        1,        (char)-1, 1,       (char)-1, 1,
+                         (char)-1, (char)-1, (char)-1, 1,        1,        1,        0,       (char)-1, 1,
+                         (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1}, // a=34
+                        {(char)-1, 0,        0,        1,        (char)-1, 1, 0,        1,        1,
+                         0,        1,        0,        (char)-1, 1,        1, 1,        0,        (char)-1,
+                         (char)-1, (char)-1, 1,        0,        (char)-1, 0, (char)-1, (char)-1, 0,
+                         (char)-1, 1,        (char)-1, 0,        0,        1, (char)-1, (char)-1}, // a=35
+                        {0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1,
+                         0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1}, // a=36
+                        {1,        (char)-1, 1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, 1,
+                         (char)-1, 1,        1, (char)-1, (char)-1, 1,        (char)-1, 0,        (char)-1, 1,
+                         (char)-1, (char)-1, 1, 1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1,
+                         1,        1,        1, (char)-1, 1,        1,        1}, // a=37
+                        {(char)-1, (char)-1, (char)-1, 1, 1,        1,        1,        1,       0,        1,
+                         (char)-1, 1,        (char)-1, 1, 1,        (char)-1, 1,        1,       (char)-1, (char)-1,
+                         1,        (char)-1, (char)-1, 1, (char)-1, 1,        (char)-1, 0,       (char)-1, (char)-1,
+                         (char)-1, (char)-1, (char)-1, 1, 1,        1,        (char)-1, (char)-1}, // a=38
+                        {0,        1, 1,        0,        (char)-1, 0,        0,        (char)-1, 1,        0,
+                         1,        1, 0,        (char)-1, 1,        0,        1,        (char)-1, 0,        1,
+                         (char)-1, 0, (char)-1, 1,        0,        (char)-1, (char)-1, 0,        (char)-1, 1,
+                         0,        0, 1,        0,        (char)-1, (char)-1, 0,        (char)-1, (char)-1}, // a=39
+                        {1,        0, (char)-1, 1,        (char)-1, 1,        0, (char)-1, (char)-1, (char)-1,
+                         (char)-1, 0, 1,        (char)-1, 1,        (char)-1, 0, 1,        1,        1,
+                         1,        0, (char)-1, 1,        (char)-1, 1,        0, (char)-1, (char)-1, (char)-1,
+                         (char)-1, 0, 1,        (char)-1, 1,        (char)-1, 0, 1,        1,        1}, // a=40
+                        {(char)-1, 1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1,
+                         1,        1, 1,        (char)-1, (char)-1, 1,        1,        (char)-1, 1,
+                         1,        0, 1,        1,        (char)-1, 1,        1,        (char)-1, (char)-1,
+                         1,        1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1,
+                         (char)-1, 1, (char)-1, 1,        1}, // a=41
+                        {0, (char)-1, 0,        0,        1,        1, 0,        1,        1,       0,        (char)-1,
+                         1, 0,        1,        (char)-1, 0,        0, (char)-1, 0,        1,       (char)-1, 0,
+                         1, 0,        0,        1,        (char)-1, 0, (char)-1, 1,        0,       (char)-1, (char)-1,
+                         0, (char)-1, (char)-1, 0,        0,        1, 0,        (char)-1, (char)-1}, // a=42
+                        {1, (char)-1, 1,        1,        (char)-1, 1,        (char)-1, 1,        1,
+                         1, (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1,
+                         1, 1,        0,        (char)-1, (char)-1, 1,        1,        1,        1,
+                         1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1,
+                         1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1}, // a=43
+                        {(char)-1, 1,        1,        1,        0,        (char)-1, (char)-1, (char)-1, 1,
+                         (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 0,        1,        1,
+                         1,        (char)-1, 1,        1,        (char)-1, 1,        1,        1,        0,
+                         (char)-1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1,
+                         (char)-1, 0,        1,        1,        1,        (char)-1, 1,        1}, // a=44
+                        {0, 0, (char)-1, 0, 1, (char)-1, 0, (char)-1, 1, 0, (char)-1, 0, 0, 1, 1,
+                         0, 0, (char)-1, 0, 1, (char)-1, 0, (char)-1, 1, 0, (char)-1, 0, 0, 1, 1,
+                         0, 0, (char)-1, 0, 1, (char)-1, 0, (char)-1, 1, 0, (char)-1, 0, 0, 1, 1}, // a=45
+                        {1,        1,        1,        1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, 1,
+                         0,        1,        1,        (char)-1, (char)-1, (char)-1, 1,        1,        (char)-1, 1,
+                         (char)-1, 1,        (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1, 1,        1,
+                         1,        (char)-1, (char)-1, 0,        (char)-1, 1,        1,        (char)-1, 1,        1,
+                         (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, (char)-1}, // a=46
+                        {(char)-1, (char)-1, (char)-1, 1,        1,        (char)-1, 1,        1,
+                         1,        1,        1,        1,        (char)-1, (char)-1, 1,        (char)-1,
+                         1,        1,        1,        (char)-1, 1,        (char)-1, 0,        1,
+                         (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,
+                         1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1,
+                         (char)-1, (char)-1, 1,        1,        1,        (char)-1, (char)-1}, // a=47
+                        {0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1,
+                         0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1,
+                         0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1, (char)-1, 0, 1, 1}, // a=48
+                        {1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1,
+                         1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1}, // a=49
+                        {(char)-1, 0, 1,        1,        (char)-1, (char)-1, 0, 1,        (char)-1, (char)-1,
+                         1,        0, (char)-1, (char)-1, 1,        1,        0, (char)-1, 1,        1,
+                         (char)-1, 0, 1,        1,        (char)-1, (char)-1, 0, 1,        (char)-1, (char)-1,
+                         1,        0, (char)-1, (char)-1, 1,        1,        0, (char)-1, 1,        1,
+                         (char)-1, 0, 1,        1,        (char)-1, (char)-1, 0, 1,        (char)-1, (char)-1}, // a=50
+                        {0, 1,        1,        0, (char)-1, 1,        0, 0,        (char)-1, 0, (char)-1, 1,
+                         0, 1,        1,        0, 1,        (char)-1, 0, 1,        (char)-1, 0, 1,        1,
+                         0, (char)-1, (char)-1, 0, 1,        (char)-1, 0, 1,        (char)-1, 0, (char)-1, (char)-1,
+                         0, (char)-1, 1,        0, 1,        0,        0, (char)-1, 1,        0, (char)-1, (char)-1,
+                         0, (char)-1, (char)-1}, // a=51
+                        {1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1,
+                         1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1,
+                         1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1,
+                         1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1}, // a=52
+                        {(char)-1, (char)-1, 1,        1,        1,        1,        1,        1,        (char)-1,
+                         (char)-1, (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,
+                         (char)-1, (char)-1, 1,        (char)-1, 1,        1,        (char)-1, 0,        (char)-1,
+                         1,        1,        (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1,
+                         (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        1,
+                         1,        1,        1,        1,        (char)-1, (char)-1, 1,        1}, // a=53
+                        {0, 1, (char)-1, 0,        (char)-1, (char)-1, 0,        (char)-1, 1,        0,        1,
+                         1, 0, 1,        (char)-1, 0,        (char)-1, (char)-1, 0,        (char)-1, 1,        0,
+                         1, 1, 0,        1,        (char)-1, 0,        (char)-1, (char)-1, 0,        (char)-1, 1,
+                         0, 1, 1,        0,        1,        (char)-1, 0,        (char)-1, (char)-1, 0,        (char)-1,
+                         1, 0, 1,        1,        0,        1,        (char)-1, 0,        (char)-1, (char)-1}, // a=54
+                        {1,        0, (char)-1, 1,        0,        1,        0, 1,        1,        (char)-1,
+                         1,        0, 1,        (char)-1, (char)-1, 0,        0, (char)-1, 1,        (char)-1,
+                         (char)-1, 0, 1,        1,        1,        (char)-1, 0, 1,        (char)-1, (char)-1,
+                         (char)-1, 0, 1,        1,        (char)-1, 1,        0, 0,        1,        1,
+                         (char)-1, 0, (char)-1, 1,        (char)-1, (char)-1, 0, (char)-1, 0,        (char)-1,
+                         1,        0, (char)-1, (char)-1, (char)-1}, // a=55
+                        {(char)-1, 1,        0,        1,        1,        1,        (char)-1, (char)-1,
+                         (char)-1, 0,        (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1,
+                         0,        (char)-1, (char)-1, (char)-1, 1,        1,        1,        0,
+                         1,        (char)-1, 1,        1,        (char)-1, 1,        0,        1,
+                         1,        1,        (char)-1, (char)-1, (char)-1, 0,        (char)-1, 1,
+                         (char)-1, (char)-1, 1,        (char)-1, 0,        (char)-1, (char)-1, (char)-1,
+                         1,        1,        1,        0,        1,        (char)-1, 1,        1}, // a=56
+                        {0, (char)-1, 1,        0, (char)-1, (char)-1, 0, (char)-1, 0,        0, (char)-1, 1,
+                         0, 1,        (char)-1, 0, (char)-1, (char)-1, 0, 1,        1,        0, (char)-1, 1,
+                         0, 1,        1,        0, 1,        1,        0, 1,        (char)-1, 0, 1,        1,
+                         0, (char)-1, (char)-1, 0, (char)-1, 1,        0, 1,        (char)-1, 0, 0,        (char)-1,
+                         0, (char)-1, (char)-1, 0, 1,        (char)-1, 0, 1,        1}, // a=57
+                        {1,        (char)-1, 1,        1,        1,        (char)-1, (char)-1, (char)-1, 1,
+                         1,        1,        1,        1,        0,        (char)-1, 1,        (char)-1, 1,
+                         (char)-1, (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1,
+                         1,        (char)-1, 1,        1,        1,        (char)-1, 1,        1,        (char)-1,
+                         1,        1,        (char)-1, 1,        (char)-1, 1,        0,        (char)-1, (char)-1,
+                         (char)-1, (char)-1, (char)-1, 1,        1,        1,        (char)-1, (char)-1, (char)-1,
+                         1,        (char)-1, (char)-1, (char)-1}, // a=58
+                        {(char)-1, 1,        (char)-1, 1,        1,        (char)-1, (char)-1, 1,        (char)-1,
+                         1,        1,        1,        (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1,
+                         1,        1,        1,        1,        1,        1,        (char)-1, 1,        1,
+                         1,        0,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1,
+                         (char)-1, (char)-1, (char)-1, 1,        1,        1,        (char)-1, (char)-1, 1,
+                         (char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,        1,        (char)-1, (char)-1,
+                         1,        (char)-1, 1,        (char)-1, (char)-1}, // a=59
+                        {0, 0,        1,        0, 1,        (char)-1, 0, 1,        (char)-1, 0, (char)-1, 0,
+                         0, (char)-1, (char)-1, 0, 0,        (char)-1, 0, (char)-1, 1,        0, (char)-1, 1,
+                         0, 1,        0,        0, 1,        1,        0, 0,        1,        0, 1,        (char)-1,
+                         0, 1,        (char)-1, 0, (char)-1, 0,        0, (char)-1, (char)-1, 0, 0,        (char)-1,
+                         0, (char)-1, 1,        0, (char)-1, 1,        0, 1,        0,        0, 1,        1}, // a=60
+                        {1,        1,        (char)-1, 1,        (char)-1, 1,        1,        (char)-1, 1,
+                         (char)-1, (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1,
+                         1,        1,        (char)-1, 1,        1,        1,        (char)-1, (char)-1, (char)-1,
+                         1,        (char)-1, 0,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,
+                         1,        1,        (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1,
+                         (char)-1, 1,        1,        (char)-1, (char)-1, 1,        (char)-1, 1,        1,
+                         (char)-1, 1,        (char)-1, 1,        1,        1,        1}, // a=61
+                        {(char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,        1,        (char)-1, 1,
+                         1,        1,        1,        (char)-1, 1,        0,        1,        1,        1,
+                         (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        1,        1,        1,
+                         (char)-1, 1,        1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1,
+                         (char)-1, 1,        1,        1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1,
+                         0,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, 1,        (char)-1,
+                         (char)-1, 1,        (char)-1, 1,        1,        1,        (char)-1, (char)-1}, // a=62
+                        {0, (char)-1, 0, 0, (char)-1, (char)-1, 0,        (char)-1, 1, 0, (char)-1, 1, 0, 1,
+                         1, 0,        0, 1, 0,        (char)-1, (char)-1, 0,        1, 0, 0,        1, 1, 0,
+                         1, (char)-1, 0, 1, (char)-1, 0,        (char)-1, (char)-1, 0, 0, (char)-1, 0, 1, 1,
+                         0, (char)-1, 0, 0, (char)-1, (char)-1, 0,        (char)-1, 1, 0, (char)-1, 1, 0, 1,
+                         1, 0,        0, 1, 0,        (char)-1, (char)-1}, // a=63
+                    };
+    static char rows[][64] = {
+        {1, 1},                                                                            // b=1
+        {(char)-1, 0, 1},                                                                  // b=3
+        {(char)-1, (char)-1, 1, 0, 1},                                                     // b=5
+        {1, (char)-1, 1, (char)-1, (char)-1, 0, 1},                                        // b=7
+        {1, 0, 1, 1, 0, 1, 1, 0, 1},                                                       // b=9
+        {(char)-1, 1, 1, 1, (char)-1, (char)-1, (char)-1, 1, (char)-1, 0, 1},              // b=11
+        {(char)-1, 1, 1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 1, (char)-1, 1, 0, 1}, // b=13
+        {1, 0, 1, 0, 0, (char)-1, 1, 0, 0, (char)-1, 0, (char)-1, (char)-1, 0, 1},         // b=15
+        {1, (char)-1, 1, (char)-1, (char)-1, (char)-1, 1, 1, (char)-1, (char)-1, (char)-1, 1, (char)-1, 1, 1, 0,
+         1}, // b=17
+        {(char)-1, (char)-1, 1, 1, 1, 1, (char)-1, 1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 1,
+         (char)-1, 0, 1}, // b=19
+        {(char)-1, 0, 1, 1, 0, 0, (char)-1, 0, (char)-1, (char)-1, 0,
+         (char)-1, 0, 0, 1, 1, 0, (char)-1, 1, 0,        1}, // b=21
+        {1,        1,        1, (char)-1, 1, (char)-1, 1,        1,        (char)-1, (char)-1, 1, 1,
+         (char)-1, (char)-1, 1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1, 0,        1}, // b=23
+        {1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1},               // b=25
+        {(char)-1, 0,        1, (char)-1, 0,        1, (char)-1, 0,        1, (char)-1, 0,        1, (char)-1, 0,
+         1,        (char)-1, 0, 1,        (char)-1, 0, 1,        (char)-1, 0, 1,        (char)-1, 0, 1}, // b=27
+        {(char)-1, (char)-1, 1,        1,        1,        1,        (char)-1, 1,        (char)-1, (char)-1,
+         (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1,
+         1,        1,        1,        1,        (char)-1, (char)-1, 1,        0,        1}, // b=29
+        {1,        (char)-1, 1,        1,        (char)-1, 1,        1,        1, 1,        (char)-1, (char)-1,
+         (char)-1, 1,        (char)-1, 1,        (char)-1, 1,        1,        1, (char)-1, (char)-1, (char)-1,
+         (char)-1, 1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, 0, 1}, // b=31
+        {1,        0, 1, (char)-1, 0, (char)-1, 1,        0, (char)-1, 0, 0, (char)-1, (char)-1, 0, 1, 1, 0, (char)-1,
+         (char)-1, 0, 0, (char)-1, 0, 1,        (char)-1, 0, (char)-1, 1, 0, 1,        1,        0, 1}, // b=33
+        {(char)-1, 1, 1, 0, (char)-1, 0,        (char)-1, 1, 0,        1,        1,        1,
+         0,        0, 1, 1, (char)-1, (char)-1, 0,        0, (char)-1, (char)-1, (char)-1, 0,
+         (char)-1, 1, 0, 1, 0,        (char)-1, (char)-1, 1, (char)-1, 0,        1}, // b=35
+        {(char)-1, 1,        1,        (char)-1, (char)-1, 1,        (char)-1, 1,        1,        1,
+         1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, 1,
+         (char)-1, (char)-1, (char)-1, 1,        1,        1,        1,        (char)-1, 1,        (char)-1,
+         (char)-1, 1,        1,        (char)-1, 1,        0,        1}, // b=37
+        {1, 0,        1, 1,        0,        (char)-1, 1, 0,        1,        1, 0, 0, (char)-1, 0,
+         1, (char)-1, 0, (char)-1, 1,        0,        1, (char)-1, 0,        1, 0, 0, (char)-1, (char)-1,
+         0, (char)-1, 1, 0,        (char)-1, (char)-1, 0, (char)-1, (char)-1, 0, 1}, // b=39
+        {1,        (char)-1, 1,        1,        (char)-1, (char)-1, 1,        1, 1, (char)-1, (char)-1,
+         (char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,        (char)-1, 1, 1, (char)-1, 1,
+         (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 1, 1,        (char)-1,
+         (char)-1, 1,        1,        (char)-1, 1,        1,        0,        1}, // b=41
+        {(char)-1, (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1, 1,        1,        1,        (char)-1,
+         1,        1,        1,        1,        1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,
+         1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1,
+         1,        1,        (char)-1, 1,        (char)-1, 1,        1,        (char)-1, 0,        1}, // b=43
+        {(char)-1, 0, 1, 0, 0, (char)-1, (char)-1, 0, 0, 1, 0, (char)-1, 1, 0, 1,
+         (char)-1, 0, 1, 0, 0, (char)-1, (char)-1, 0, 0, 1, 0, (char)-1, 1, 0, 1,
+         (char)-1, 0, 1, 0, 0, (char)-1, (char)-1, 0, 0, 1, 0, (char)-1, 1, 0, 1}, // b=45
+        {1,        1,        1,        (char)-1, 1,        1, 1,        1,        (char)-1, (char)-1,
+         1,        (char)-1, 1,        (char)-1, 1,        1, 1,        (char)-1, (char)-1, 1,
+         (char)-1, (char)-1, 1,        1,        (char)-1, 1, 1,        (char)-1, (char)-1, (char)-1,
+         1,        (char)-1, 1,        (char)-1, 1,        1, (char)-1, (char)-1, (char)-1, (char)-1,
+         1,        (char)-1, (char)-1, (char)-1, (char)-1, 0, 1}, // b=47
+        {1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
+         1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1}, // b=49
+        {(char)-1, 0,        1,        1,        0, (char)-1, (char)-1, 0,        (char)-1, 1, 0,        1, 1,        0,
+         1,        0,        0,        1,        1, 0,        (char)-1, 1,        0,        1, (char)-1, 0, (char)-1, 1,
+         0,        (char)-1, (char)-1, 0,        0, (char)-1, 0,        (char)-1, (char)-1, 0, (char)-1, 1, 0,        1,
+         1,        0,        (char)-1, (char)-1, 0, 1,        (char)-1, 0,        1}, // b=51
+        {(char)-1, (char)-1, 1,        (char)-1, 1,        1,        (char)-1, 1,        1,        1,        (char)-1,
+         1,        (char)-1, 1,        1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, (char)-1,
+         1,        1,        (char)-1, (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1,
+         (char)-1, 1,        1,        1,        (char)-1, 1,        (char)-1, 1,        1,        1,        (char)-1,
+         1,        1,        (char)-1, 1,        (char)-1, (char)-1, 1,        0,        1}, // b=53
+        {1,        (char)-1, 1,        0,        (char)-1, 1,        1,        1,        0,        0, (char)-1,
+         1,        1,        0,        1,        1,        1,        (char)-1, 0,        (char)-1, 0, (char)-1,
+         (char)-1, 0,        1,        (char)-1, 1,        (char)-1, 0,        1,        1,        0, 1,
+         0,        1,        (char)-1, (char)-1, (char)-1, 0,        (char)-1, (char)-1, 1,        0, 0,
+         (char)-1, (char)-1, (char)-1, 1,        0,        (char)-1, 1,        (char)-1, (char)-1, 0, 1}, // b=55
+        {1,        0, 1,        (char)-1, 0, 1,        1,        0, (char)-1, (char)-1, 0, (char)-1,
+         1,        0, 1,        (char)-1, 0, 0,        (char)-1, 0, (char)-1, (char)-1, 0, 1,
+         (char)-1, 0, 1,        1,        0, (char)-1, 1,        0, (char)-1, (char)-1, 0, (char)-1,
+         0,        0, (char)-1, 1,        0, 1,        (char)-1, 0, (char)-1, (char)-1, 0, 1,
+         1,        0, (char)-1, 1,        0, 1,        1,        0, 1}, // b=57
+        {(char)-1, 1,        1,        1,        (char)-1, 1,        (char)-1, 1,        (char)-1, (char)-1,
+         1,        (char)-1, (char)-1, 1,        1,        1,        (char)-1, 1,        1,        1,
+         1,        (char)-1, (char)-1, 1,        1,        1,        1,        1,        (char)-1, (char)-1,
+         (char)-1, (char)-1, (char)-1, 1,        1,        (char)-1, (char)-1, (char)-1, (char)-1, 1,
+         (char)-1, (char)-1, (char)-1, 1,        1,        (char)-1, 1,        1,        (char)-1, 1,
+         (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, 0,        1}, // b=59
+        {(char)-1, 1, 1,        1,        (char)-1, (char)-1, (char)-1, 1,        (char)-1, (char)-1, 1,
+         1,        1, 1,        1,        (char)-1, (char)-1, 1,        1,        (char)-1, 1,        (char)-1,
+         (char)-1, 1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, (char)-1, 1,
+         (char)-1, 1, (char)-1, (char)-1, 1,        (char)-1, 1,        1,        (char)-1, (char)-1, 1,
+         1,        1, 1,        1,        (char)-1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,
+         1,        1, (char)-1, 1,        0,        1}, // b=61
+        {1, 0,        1, (char)-1, 0,        0, 1, 0, (char)-1, 1, 0,        (char)-1, 0, 0,
+         1, (char)-1, 0, (char)-1, (char)-1, 0, 1, 1, 0,        1, (char)-1, 0,        0, 1,
+         0, (char)-1, 1, 0,        (char)-1, 0, 0, 1, (char)-1, 0, (char)-1, (char)-1, 0, 1,
+         1, 0,        1, (char)-1, 0,        0, 1, 0, (char)-1, 1, 0,        (char)-1, 0, 0,
+         1, (char)-1, 0, (char)-1, (char)-1, 0, 1}, // b=63
+    };
+
+    if (a >= b)
     {
-        return 1;
+        a %= b;
     }
 
-    if (x == 2)
+    // 0 <= a < b with b odd
+    if (a < 3)
     {
-        // char j[4] = { -1,-1,1,1};
-        // return j[((y - 3) >> 1) % 4];
-        return ((y + 2) & 4) ? -1 : 1;
-    }
-    if (x == 3)
-    {
-        char j[6] = {0, (char)-1, (char)-1, 0, 1, 1};
-        return j[((y - 3) >> 1) % 6];
-    }
-    if (x == 5)
-    {
-        char j[5] = {(char)-1, 0, (char)-1, 1, 1};
-        return j[((y - 3) >> 1) % 5];
-    }
-    if (x == 7)
-    {
-        char j[14] = {1, (char)-1, 0, 1, (char)-1, (char)-1, (char)-1, (char)-1, 1, 0, (char)-1, 1, 1, 1};
-        return j[((y - 3) >> 1) % 14];
-    }
-    if (x == 11)
-    {
-        char j[22] = {(char)-1, 1,        1,        1, 0, (char)-1, (char)-1, (char)-1, 1, (char)-1, (char)-1, 1,
-                      (char)-1, (char)-1, (char)-1, 0, 1, 1,        1,        (char)-1, 1, 1};
-        return j[((y - 3) >> 1) % 22];
-    }
-    if (x == 13)
-    {
-        char j[13] = {1, (char)-1, (char)-1, 1, (char)-1, 0, (char)-1, 1, (char)-1, (char)-1, 1, 1, 1};
-        return j[((y - 3) >> 1) % 13];
-    }
-    if (x == 17)
-    {
-        char j[17] = {(char)-1, (char)-1, (char)-1, 1,        (char)-1, 1,        1, 0, 1,
-                      1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1, 1};
-        return j[((y - 3) >> 1) % 17];
-    }
-    if (x == 19)
-    {
-        char j[19] = {1,        1, (char)-1, 1,        (char)-1, (char)-1, 1,        1,        0,       (char)-1,
-                      (char)-1, 1, 1,        (char)-1, 1,        (char)-1, (char)-1, (char)-1, (char)-1};
-        unsigned t = ((y - 3) >> 1) % 38;
-        return t >= 19 ? -j[t - 19] : j[t];
-    }
-    if (x == 23)
-    {
-        char j[23] = {(char)-1, (char)-1, 1,        1, 1,        1,        1,        (char)-1,
-                      1,        (char)-1, 0,        1, (char)-1, 1,        (char)-1, (char)-1,
-                      (char)-1, (char)-1, (char)-1, 1, 1,        (char)-1, (char)-1};
-        unsigned t = ((y - 3) >> 1) % 46;
-        return t >= 23 ? -j[t - 23] : j[t];
-    }
-    if (x == 29)
-    {
-        char j[29] = {(char)-1, 1, 1,        1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1,
-                      1,        1, (char)-1, 0, (char)-1, 1, 1,        (char)-1, (char)-1, (char)-1,
-                      (char)-1, 1, (char)-1, 1, 1,        1, (char)-1, 1,        1};
-        return j[((y - 3) >> 1) % 29];
-    }
-    if (x == 31)
-    {
-        char j[31] = {1,        1, (char)-1, 1,        1, (char)-1, 1,        (char)-1, (char)-1, (char)-1, 1,
-                      1,        1, (char)-1, 0,        1, (char)-1, (char)-1, (char)-1, 1,        1,        1,
-                      (char)-1, 1, (char)-1, (char)-1, 1, (char)-1, (char)-1, (char)-1, (char)-1};
-        unsigned t = ((y - 3) >> 1) % 62;
-        return t >= 31 ? -j[t - 31] : j[t];
+        // (0/b) = (b == 1)
+        if (a == 0)
+        {
+            return (b == 1) ? 1 : 0;
+        }
+        // (1/b) = 1
+        if (a == 1)
+        {
+            return 1;
+        }
+        // (2/b) = (b % 8 == 3 || b % 8 == 5) ? -1 : 1;
+        return (((b >> 2) ^ (b >> 1)) & 1) ? -1 : 1;
     }
 
+    // 3 <= a < b with b odd
+    if (a < 64)
+    {
+        if (a & 2)
+        {
+            uint64_t k = ((b - 3) >> 1) % (2 * a);
+            return k < a ? cols[a][k] : -cols[a][k - a];
+        }
+        else
+        {
+            uint64_t k = ((b - 3) >> 1) % a;
+            return cols[a][k];
+        }
+    }
+
+    // 64 <= a < b with b odd and a < 2^62
     int t = 1;
-    uint64_t a = x;
-    uint64_t n = y;
-    unsigned v = n & 7;
-    unsigned c = (v == 3) || (v == 5);
+    if ((a & 3) == 0)
+    {
+        b = b % a;
+    }
+    else if ((a & 3) == 2 && b < 3 * a)
+    {
+        if (b < 2 * a)
+        {
+            t = (b & 2) ? -t : t;
+            b = b - a;
+        }
+        else
+        {
+            t = (b & 1) ? -t : t;
+            b = b - 2 * a;
+        }
+    }
+    else
+    {
+        b = b % (4 * a);
+        if (b >= 2 * a)
+        {
+            b -= 2 * a;
+            t = (a & 2) ? -t : t;
+        }
+    }
+
+    // 64 <= a, b odd
+    if (b < 64)
+    {
+        uint64_t k = (a - 2) % b;
+        return (t == -1) ? -rows[b >> 1][k] : rows[b >> 1][k];
+    }
+
+    unsigned c = (b >> 2) ^ (b >> 1);
     while (a)
     {
-        v = __builtin_ctzll(a);
+        unsigned v = uint64_tzcnt(a);
         a >>= v;
-        t = (c & (v & 1)) ? -t : t;
+        t = (c & v & 1) ? -t : t;
 
-        if (a < n)
+        if (a < b)
         {
-            uint64_t tmp = a;
-            a = n;
-            n = tmp;
-            t = ((a & n & 3) == 3) ? -t : t;
-            v = n & 7;
-            c = (v == 3) || (v == 5);
+            uint64_t k = a;
+            a = b;
+            b = k;
+            t = ((a & b & 3) == 3) ? -t : t;
+            c = (b >> 2) ^ (b >> 1);
         }
 
-        a -= n;
+        a -= b;
     }
-
-    return (n == 1) ? t : 0;
+    return (b == 1) ? t : 0;
 }
 
 static int uint64_minus_one_kronecker(uint64_t n)
@@ -791,7 +1085,7 @@ static sieve_t mpz_composite_sieve(mpz_t n)
 // Note that when d < 0 , kronecker(d | n) == kronecker(-1 | n) * jacobi( -d | n)
 // Note that when d > 0, jacobi(d | n) == jacobi( d | n % (4 * d))
 // run Lucas sequence L(D, 1, 1)
-static bool uint64_lucas(uint64_t n, bool verbose = false)
+static bool uint64_strong_lucas(uint64_t n, bool verbose = false)
 {
     int64_t d = 5;
     int j;
@@ -822,6 +1116,8 @@ static bool uint64_lucas(uint64_t n, bool verbose = false)
     // Lucas sequence L(sgn*D, U=1, V=1)
     uint64_t D = d;
     uint64_t e = n + 1;
+    uint64_t s = uint64_tzcnt(e);
+    e >>= s;
     uint64_t nU;
     uint64_t bits = uint64_log_2(e);
     uint64_t tmp;
@@ -853,15 +1149,38 @@ static bool uint64_lucas(uint64_t n, bool verbose = false)
             V = longlongmod(ttmp >> 1, n);
         }
     }
-    return (U == 0);
+    if (U == 0 || V == 0)
+    {
+        return true;
+    }
+    while (s--)
+    {
+        // U, V  = U * V, (U * U * d + V * V ) /2
+        nU = (sgn < 0) ? n - U : U;
+        ttmp = (uint128_t)nU * U;
+        U = mulmod(U, V, n);
+
+        tmp = longlongmod(ttmp, n);
+        ttmp = (uint128_t)tmp * D + (uint128_t)V * V;
+        ttmp += (ttmp & 1) ? n : 0;
+        V = longlongmod(ttmp >> 1, n);
+
+        if (V == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
-static bool mpz_lucas(mod_precompute_t *p, bool verbose = false)
+static bool mpz_strong_lucas(mod_precompute_t *p, bool verbose = false)
 {
-    int64_t d = 5;
+    int64_t q, d = 5;
+    uint64_t s, bits;
     int j;
     int sgn = 1;
-    bool r = true;
+    bool r = false;
     uint64_t nn;
     mpz_t ignore;
     mpz_init(ignore);
@@ -891,19 +1210,39 @@ static bool mpz_lucas(mod_precompute_t *p, bool verbose = false)
         printf("Test lucas sequence with D=%s%lu\n", sgn < 0 ? "-" : "+", d);
     }
 
-    mpz_t e, tmp, U, V;
-    mpz_inits(e, tmp, U, V, 0);
+    mpz_t e, e3, tmp, Utmp, U, V, i2Q;
+    mpz_inits(e, e3, tmp, Utmp, U, V, i2Q, 0);
     d *= sgn;
+    q = (1 - d) / 4;
+    if (q < 0)
+    {
+        mpz_sub_ui(tmp, p->m, -2 * q);
+    }
+    else
+    {
+        mpz_set_si(tmp, 2 * q);
+    }
+    if (mpz_invert(i2Q, tmp, p->m) == 0)
+    {
+        // no inverse, modulus must be composite
+        goto done;
+    }
     mpz_set_ui(U, 1);
     mpz_set_ui(V, 1);
     mpz_add_ui(e, p->m, 1);
+    s = mpz_scan1(e, 0);
+    mpz_div_2exp(e, e, s);
+    mpz_mul_ui(e3, e, 3);
+    mpz_xor(e, e3, e);
     mpz_mod_to_montg(U, p);
-    mpz_mod_to_montg(V, p);
+    mpz_set(V, U);
 
     // Lucas sequence L(sgn*D, U=1, V=1)
-    uint64_t bits = mpz_sizeinbase(e, 2) - 1;
-    while (bits--)
+    bits = mpz_sizeinbase(e, 2) - 1;
+    while (bits-- > 1)
     {
+        // U_2k, V_2k
+        //
         // U, V  = U * V, (U * U * d + V * V ) / 2
         mpz_mul(tmp, U, U);
         mpz_mul_si(tmp, tmp, d);
@@ -914,26 +1253,63 @@ static bool mpz_lucas(mod_precompute_t *p, bool verbose = false)
 
         if (mpz_tstbit(e, bits))
         {
-            // U, V  = (U + V) / 2, (U * d + V ) / 2
-            mpz_mul_si(tmp, U, d);
-            mpz_add(U, U, V);
-            mpz_mod_div2(U, p);
-
-            mpz_add(V, tmp, V);
-            mpz_mod_div2(V, p);
+            if (mpz_tstbit(e3, bits))
+            {
+                // U_2k+1, V_2k+1
+                //
+                // U, V = (U + V) / 2, (U * d + V ) / 2
+                mpz_mul_si(tmp, U, d);
+                mpz_add(U, U, V);
+                mpz_mod_div2(U, p);
+                mpz_add(V, tmp, V);
+                mpz_mod_div2(V, p);
+            }
+            else
+            {
+                // U_2k-1, V_2k-1
+                //
+                // U, V = (U-V)/2, 2 * Q * U - (U-V)/2
+                mpz_sub(Utmp, U, V);
+                mpz_mod_div2(Utmp, p);
+                mpz_mul_si(V, U, 2 * q);
+                mpz_sub(V, V, Utmp);
+                mpz_set(U, Utmp);
+            }
         }
         mpz_mod_positive_reduce(U, tmp, p);
         mpz_mod_fast_reduce(U, tmp, p);
         mpz_mod_positive_reduce(V, tmp, p);
         mpz_mod_fast_reduce(V, tmp, p);
     }
-
-    mpz_mod_from_montg(U, tmp, p);
-    mpz_mod_from_montg(V, tmp, p);
     mpz_mod_slow_reduce(U, p);
     mpz_mod_slow_reduce(V, p);
-    r = mpz_cmp_ui(U, 0) == 0;
-    mpz_clears(e, tmp, U, V, 0);
+    r = mpz_cmp_ui(U, 0) == 0 || mpz_cmp_ui(V, 0) == 0;
+
+    while (!r && s--)
+    {
+        // U, V  = U * V, (U * U * d + V * V ) / 2
+        mpz_mul(tmp, U, U);
+        mpz_mul_si(tmp, tmp, d);
+        mpz_mul(U, U, V);
+        mpz_mul(V, V, V);
+        mpz_add(V, V, tmp);
+        mpz_mod_div2(V, p);
+        mpz_mod_positive_reduce(U, tmp, p);
+        mpz_mod_fast_reduce(U, tmp, p);
+        mpz_mod_positive_reduce(V, tmp, p);
+        mpz_mod_fast_reduce(V, tmp, p);
+        mpz_mod_slow_reduce(V, p);
+        r = mpz_cmp_ui(V, 0) == 0;
+    }
+
+    // mpz_mod_from_montg(U, tmp, p);
+    // mpz_mod_from_montg(V, tmp, p);  // not needed
+    // mpz_mod_slow_reduce(U, p);
+    // mpz_mod_slow_reduce(V, p);    // not needed
+    // check U(n+1) = 0
+    // r = mpz_cmp_ui(U, 0) == 0;
+done:
+    mpz_clears(e, e3, tmp, Utmp, U, V, 0);
 
     return r;
 }
@@ -959,7 +1335,7 @@ static bool uint64_simple_primality(uint64_t n, bool verbose = false)
         {
             printf("Number is < 2, not prime\n");
         }
-	return false;
+        return false;
     }
 
     if ((n & 1) == 0)
@@ -1014,7 +1390,7 @@ static bool uint64_simple_primality(uint64_t n, bool verbose = false)
         }
         return false; // composite
     }
-    b = uint64_lucas(n, verbose);
+    b = uint64_strong_lucas(n, verbose);
     if (b != true)
     {
         if (verbose)
@@ -1107,7 +1483,7 @@ bool mpz_simple_primality(mpz_t n, bool verbose)
     }
 
     mod_precompute_t *pcpt = mpz_mod_precompute(n, 1, verbose);
-    bool r = mpz_lucas(pcpt, verbose);
+    bool r = mpz_strong_lucas(pcpt, verbose);
     mpz_mod_uncompute(pcpt);
 
     if (verbose && r == false)
@@ -1290,23 +1666,20 @@ void simple_primality_self_test(void)
 
     // quick tests mod 31
     mpz_set_ui(ma, 31);
-    p = mpz_mod_precompute(ma);
-
     res = mpz_simple_primality(ma);
     assert(res == true);
 
-    mpz_mod_uncompute(p);
+    // quick tests mod 11213
+    mpz_set_ui(ma, 11213);
+    res = mpz_simple_primality(ma);
+    assert(res == true);
 
     // quick tests mod 2^89+29
     mpz_set_ui(ma, 1);
     mpz_mul_2exp(ma, ma, 89);
     mpz_add_ui(ma, ma, 29);
-    p = mpz_mod_precompute(ma);
-
     res = mpz_simple_primality(ma);
     assert(res == true);
-
-    mpz_mod_uncompute(p);
 
     // quick tests mod 21*2^128+1
     mpz_set_ui(ma, 21);
@@ -1374,46 +1747,52 @@ void simple_primality_self_test(void)
     // ---------------------------------------------------------------------------------
     printf("Large primes (mpz)\n");
 
-    // large proth prime 333*2^448+1
-    mpz_set_ui(ma, 333);
-    mpz_mul_2exp(ma, ma, 448);
-    mpz_add_ui(ma, ma, 1);
-    assert(mpz_simple_primality(ma) == true);
+    if (1)
+    {
+        // large proth prime 333*2^448+1
+        mpz_set_ui(ma, 333);
+        mpz_mul_2exp(ma, ma, 448);
+        mpz_add_ui(ma, ma, 1);
+        bool res = mpz_simple_primality(ma);
+        assert(res == true);
 
-    // Large Riesel prime 100000000000037*2^5982-1
-    mpz_set_ui(ma, 1);
-    mpz_mul_2exp(ma, ma , 5982);
-    mpz_mul_ui(ma, ma , 100000000000037ul);
-    mpz_sub_ui(ma, ma, 1ul);
-    assert(mpz_simple_primality(ma) == true);
+        // Large Riesel prime 100000000000037*2^5982-1
+        mpz_set_ui(ma, 1);
+        mpz_mul_2exp(ma, ma, 5982);
+        mpz_mul_ui(ma, ma, 100000000000037ul);
+        mpz_sub_ui(ma, ma, 1ul);
+        res = mpz_simple_primality(ma);
+        assert(res == true);
 
-    // 11111...6442446...11111 (1001-digits) The smallest zeroless titanic palindromic prime
-    // https://t5k.org/curios/page.php?number_id=3797
-    char titanic[1002];
-    memset(titanic, '1', 1001);
-    titanic[497] = '6';
-    titanic[498] = '4';
-    titanic[499] = '4';
-    titanic[500] = '2';
-    titanic[501] = '4';
-    titanic[502] = '4';
-    titanic[503] = '6';
-    titanic[1001] = 0;
-    mpz_set_str(ma, titanic, 10);
-    // gmp_printf("%Zd\n", ma);
-    assert(mpz_simple_primality(ma) == true);
+        // 11111...6442446...11111 (1001-digits) The smallest zeroless titanic palindromic prime
+        // https://t5k.org/curios/page.php?number_id=3797
+        char titanic[1002];
+        memset(titanic, '1', 1001);
+        titanic[497] = '6';
+        titanic[498] = '4';
+        titanic[499] = '4';
+        titanic[500] = '2';
+        titanic[501] = '4';
+        titanic[502] = '4';
+        titanic[503] = '6';
+        titanic[1001] = 0;
+        mpz_set_str(ma, titanic, 10);
+        // gmp_printf("%Zd\n", ma);
+        res = mpz_simple_primality(ma);
+        assert(res == true);
 
-    // 11111...0...3781 (1001-digits) The smallest Cyclops titanic prime.
-    // https://t5k.org/curios/page.php?number_id=18967
-    memset(titanic, '1', 1001);
-    titanic[500] = '0';
-    titanic[997] = '3';
-    titanic[998] = '7';
-    titanic[999] = '8';
-    titanic[1000] = '1';
-    titanic[1001] = 0;
-    mpz_set_str(mb, titanic, 10);
-    assert(mpz_simple_primality(mb) == true);
+        // 11111...0...3781 (1001-digits) The smallest Cyclops titanic prime.
+        // https://t5k.org/curios/page.php?number_id=18967
+        memset(titanic, '1', 1001);
+        titanic[500] = '0';
+        titanic[997] = '3';
+        titanic[998] = '7';
+        titanic[999] = '8';
+        titanic[1000] = '1';
+        titanic[1001] = 0;
+        mpz_set_str(mb, titanic, 10);
+        assert(mpz_simple_primality(mb) == true);
+    }
 
     // ---------------------------------------------------------------------------------
     printf("Large composites (mpz)\n");
